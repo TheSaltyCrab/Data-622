@@ -9,22 +9,206 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+```{r,echo=FALSE}
+library(caret)
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(corrplot)
+library(gridExtra)
+library(xgboost)
+```
+First data set, from Kaggle on air quality in north Carolina
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r}
+air_q=read.csv("https://raw.githubusercontent.com/TheSaltyCrab/Data-622/main/air-quality.csv")
+air_q$Last_Check<-as.POSIXlt(air_q$Last_Check,format="%Y/%m/%d %H:%M:%S",tz=Sys.timezone())
+air_q$Week_Day<-as.numeric(air_q$Last_Check$wday)
+air_q$month<-as.numeric(air_q$Last_Check$mon)
+air_q$hour<-as.numeric(air_q$Last_Check$hour)
+air_q$Last_Check<-as.POSIXct(air_q$Last_Check,format="%Y/%m/%d %H:%M:%S",tz=Sys.timezone())
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+#air_q<-separate(air_q, Last_Check, into = c("Date", "Time"), sep = " ")
 
-```{r cars}
-summary(cars)
+air_q<-air_q %>%
+  select(!c(X,Y,Site_Label,Inside_Outside,ObjectId))
+summary(air_q)
+```
+Import second dataset the ultimate Pokedex. containing over 1000 pokemon entries. 
+```{r}
+read.csv()
+
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+```{r}
+#air_q$Week_Day<-air_q$Last_Check$wday
+#air_q$Last_Check
+#library(scales)
+#head(air_q,1000)
+a1=ggplot(air_q, aes(Last_Check, Current_Particulate_Matter_2_5_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+b1=ggplot(head(air_q,11000), aes(Last_Check, Current_Particulate_Matter_2_5_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+c1=ggplot(head(air_q,500), aes(Last_Check, Current_Particulate_Matter_2_5_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+d1=ggplot(tail(air_q,489), aes(Last_Check, Current_Particulate_Matter_2_5_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+grid.arrange(a1,b1,c1,d1)
+       #scale_x_datetime(labels = date_format("%H:%M:%S"))
+#air_q$Last_Check[1]
+```
+```{r}
+a2=ggplot(air_q, aes(Last_Check, PM_2_5_30_Minute_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+b2=ggplot(head(air_q,11000), aes(Last_Check, PM_2_5_30_Minute_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+c2=ggplot(head(air_q,500), aes(Last_Check, PM_2_5_30_Minute_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+d2=ggplot(tail(air_q,489), aes(Last_Check, PM_2_5_30_Minute_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+grid.arrange(a2,b2,c2,d2)
+```
+```{r}
+a3=ggplot(air_q, aes(Last_Check, PM_2_5_6_Hour_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+b3=ggplot(head(air_q,11000), aes(Last_Check, PM_2_5_6_Hour_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+c3=ggplot(head(air_q,500), aes(Last_Check, PM_2_5_6_Hour_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+d3=ggplot(tail(air_q,489), aes(Last_Check, PM_2_5_6_Hour_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+grid.arrange(a3,b3,c3,d3)
+```
+```{r}
+a4=ggplot(air_q, aes(Last_Check, PM_2_5_24_Hour_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+b4=ggplot(head(air_q,11000), aes(Last_Check, PM_2_5_24_Hour_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+c4=ggplot(head(air_q,500), aes(Last_Check, PM_2_5_24_Hour_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+d4=ggplot(tail(air_q,489), aes(Last_Check, PM_2_5_24_Hour_Avg_)) +
+       geom_point() +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+grid.arrange(a4,b4,c4,d4)
+```
+```{r}
+#ggplot(air_q, aes(x=as.character(Week_Day), y=PM_2_5_24_Hour_Avg_)) + 
+#  geom_boxplot()
+a5=ggplot(air_q, aes(x=as.character(Week_Day), y=PM_2_5_24_Hour_Avg_)) + 
+  geom_boxplot()
+b5=ggplot(air_q, aes(x=as.character(month), y=PM_2_5_24_Hour_Avg_), group=) + 
+  geom_boxplot()
+c5=ggplot(air_q, aes(x=as.character(hour), y=PM_2_5_24_Hour_Avg_), group=) + 
+  geom_boxplot()
+
+grid.arrange(a5,b5,c5)
+```
+```{r}
+#ggplot(air_q, aes(x=as.character(Week_Day), y=PM_2_5_24_Hour_Avg_)) + 
+#  geom_boxplot()
+a6=ggplot(air_q, aes(x=as.character(Week_Day), y=PM_2_5_6_Hour_Avg_)) + 
+  geom_boxplot()
+b6=ggplot(air_q, aes(x=as.character(month), y=PM_2_5_6_Hour_Avg_), group=) + 
+  geom_boxplot()
+c6=ggplot(air_q, aes(x=as.character(hour), y=PM_2_5_6_Hour_Avg_), group=) + 
+  geom_boxplot()
+
+grid.arrange(a6,b6,c6)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+#summary(air_q)
+```
+
+```{r}
+modeling_df<-air_q %>%
+  select(!c(Latitude,Longitude,Age_of_Data_at_Check__minutes_,Last_Check,Hardware_Issues))
+summary(modeling_df)
+```
+
+
+I modified some of the code from this article to guide me through XGboosting: https://www.statology.org/xgboost-in-r/
+```{r}
+set.seed(9)
+x = createDataPartition(modeling_df$month, p = .8, list = F)
+train = modeling_df[x, ]
+test = modeling_df[-x, ]
+train_x = data.matrix(train[, -13])
+train_y = train[,13]
+test_x = data.matrix(test[, -13])
+test_y = test[, 13]
+xgb_train = xgb.DMatrix(data = train_x, label = train_y)
+xgb_test = xgb.DMatrix(data = test_x, label = test_y)
+
+```
+```{r}
+#define watchlist
+watchlist = list(train=xgb_train, test=xgb_test)
+
+#fit XGBoost model and display training and testing data at each round
+model = xgb.train(data = xgb_train, max.depth = 3, watchlist=watchlist, nrounds = 2000)
+
+#It apears that the number of iterations that reduce test and training rmse is 1963
+
+final_boost<-xgboost(data = xgb_train, max.depth = 3, nrounds = 1963, verbose = 0)
+```
+
+```{r}
+
+```
+
+
+
+####################################################################################
+```{r}
+#define date
+date <- as.POSIXct(air_q$Date[1])
+
+#format date
+formatted_date <- format(date, format="%m-%d-%y")
+
+format(date, format="%a")
+date
+typeof(date)
+
+```
+
+```{r}
+#air_q$Date
+air_q %>%
+   mutate(Date=as.Date(air_q$Date, format = "%d.%m.%Y"))
+```
+
+```{r}
+Hours <- format(as.POSIXct(air_q$Last_Check[1], "%Y-%m-%d %H:%M:%S", tz = ""), format = "%H:%M")
+
+Dates <- format(as.Date(air_q$Last_Check[1],"%Y-%m-%d"), format = "%d/%m/%Y")
+
+air_q$Last_Check[1]
+Hours
+Dates
+```
